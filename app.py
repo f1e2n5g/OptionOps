@@ -20,6 +20,7 @@ from ui.components import (
     render_hedging_calculator,
     render_bs_section,
     render_data_section,
+    render_screener_tab,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -123,12 +124,13 @@ st.markdown("---")
 # ---------------------------------------------------------------------------
 # Tabs
 # ---------------------------------------------------------------------------
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📊 戰場情緒",
     "🛡️ 主力佈局",
     "🧮 避險計算",
     "🔬 Black-Scholes",
     "📋 原始數據",
+    "🔍 選股雷達",
 ])
 
 with tab1:
@@ -150,3 +152,7 @@ with tab4:
 with tab5:
     st.subheader("📋 詳細期權報價表")
     render_data_section(calls_filtered, puts_filtered)
+
+with tab6:
+    st.subheader("🔍 選股雷達 — 多維度批量選股")
+    render_screener_tab()
