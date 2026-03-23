@@ -2,3 +2,9 @@ __pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
+
+# Streamlit secrets — 永不入版本控制
+.streamlit/secrets.toml
+
+# 環境變數
+.env

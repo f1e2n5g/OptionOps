@@ -4,6 +4,7 @@ Main Streamlit entry point.
 Run with:  streamlit run app.py
 """
 
+import hmac
 import logging
 import streamlit as st
 
@@ -11,6 +12,7 @@ from config import (
     APP_TITLE, APP_ICON,
     STRIKE_RANGE_MIN, STRIKE_RANGE_MAX,
     STRIKE_RANGE_DEFAULT_LOW, STRIKE_RANGE_DEFAULT_HIGH,
+    FINMIND_TOKEN,
 )
 from data.fetcher import get_price, get_expirations, get_option_chain
 from core.calculations import calc_pc_ratio, calc_max_pain
@@ -26,7 +28,7 @@ from ui.components import (
 logging.basicConfig(level=logging.INFO)
 
 # ---------------------------------------------------------------------------
-# Page config
+# Page config (must be first Streamlit call)
 # ---------------------------------------------------------------------------
 st.set_page_config(
     page_title=f"{APP_ICON} {APP_TITLE}",
@@ -34,14 +36,43 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-st.markdown("""
-<style>
-    h1, h2, h3 { color: #00ff41 !important; font-family: 'Courier New', monospace; }
-    .stMetric label { color: #aaaaaa !important; }
-    div[data-testid="stSidebar"] { background-color: #111111; }
-    .block-container { padding-top: 1.5rem; }
-</style>
-""", unsafe_allow_html=True)
+# ---------------------------------------------------------------------------
+# Password gate
+# ---------------------------------------------------------------------------
+
+def _check_password() -> bool:
+    """
+    Simple password gate backed by st.secrets["APP_PASSWORD"].
+    - If APP_PASSWORD is not set in secrets, auth is skipped (dev mode).
+    - Uses hmac.compare_digest to prevent timing attacks.
+    - Stores authenticated state in st.session_state so the user
+      is not prompted again during the same browser session.
+    """
+    if "APP_PASSWORD" not in st.secrets:
+        return True  # dev mode — no secrets configured
+
+    if st.session_state.get("_auth_ok"):
+        return True  # already authenticated this session
+
+    def _verify() -> None:
+        entered = st.session_state.get("_pw_input", "")
+        correct = st.secrets["APP_PASSWORD"]
+        if hmac.compare_digest(entered.encode("utf-8"), correct.encode("utf-8")):
+            st.session_state["_auth_ok"] = True
+            st.session_state.pop("_auth_failed", None)
+        else:
+            st.session_state["_auth_failed"] = True
+
+    st.title(f"{APP_ICON} OptionOps")
+    st.caption("Strategic Options Analytics — 請輸入存取密碼")
+    st.text_input("密碼", type="password", key="_pw_input", on_change=_verify)
+    if st.session_state.get("_auth_failed"):
+        st.error("密碼錯誤，請重試。")
+    st.stop()
+    return False  # unreachable; st.stop() above exits execution
+
+
+_check_password()
 
 # ---------------------------------------------------------------------------
 # Sidebar — inputs
@@ -108,6 +139,9 @@ puts_filtered = puts_raw[
 pc_ratio = calc_pc_ratio(calls_raw, puts_raw)
 max_pain = calc_max_pain(calls_raw, puts_raw)
 
+# FinMind token: prefer st.secrets, fall back to config constant
+_finmind_token: str = st.secrets.get("FINMIND_TOKEN", FINMIND_TOKEN)
+
 # ---------------------------------------------------------------------------
 # Header
 # ---------------------------------------------------------------------------
@@ -155,4 +189,4 @@ with tab5:
 
 with tab6:
     st.subheader("🔍 選股雷達 — 多維度批量選股")
-    render_screener_tab()
+    render_screener_tab(_finmind_token)

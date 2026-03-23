@@ -326,19 +326,23 @@ def _style_screener(df: pd.DataFrame) -> "pd.io.formats.style.Styler":
     styler = df.style
     for col in signal_cols:
         if col in df.columns:
-            styler = styler.applymap(_cell_color, subset=[col])
+            styler = styler.map(_cell_color, subset=[col])
     return styler
 
 
-def render_screener_tab() -> None:
+def render_screener_tab(finmind_token: str = "") -> None:
     """
     選股雷達 — full UI for the stock screener tab.
     Handles stock pool selection, filter setup, scan execution, and results display.
+
+    finmind_token: FinMind API token (read from st.secrets in app.py, passed here).
+                   Empty string → unauthenticated (300 req/hr free tier).
     """
     from config import (
         TW_DEFAULT_POOL, US_DEFAULT_POOL, SP500_TOP30_POOL,
-        SCREENER_MAX_TICKERS, FINMIND_TOKEN,
+        SCREENER_MAX_TICKERS,
     )
+    FINMIND_TOKEN = finmind_token
     from data.screener import run_full_scan
 
     st.markdown(
